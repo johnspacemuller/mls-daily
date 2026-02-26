@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MLS Publishing Rhythms</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0c0e13;
+    --card: #13161d;
+    --card-border: #1e222d;
+    --text: #c8cdd8;
+    --text-muted: #6b7280;
+    --text-dim: #454b58;
+    --heading: #eef0f4;
+    --accent: #6366f1;
+    --accent-soft: rgba(99,102,241,0.12);
+    --blue: #3b82f6;
+    --orange: #f59e0b;
+    --red: #ef4444;
+    --green: #22c55e;
+    --purple: #a855f7;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 32px 24px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container { max-width: 1080px; margin: 0 auto; }
+
+  /* Header */
+  .header { margin-bottom: 32px; }
+  .header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--heading);
+    letter-spacing: -0.3px;
+  }
+  .header .meta {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* KPI strip */
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .kpi {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+  }
+  .kpi .label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 6px;
+  }
+  .kpi .value {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--heading);
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+  }
+  .kpi .unit {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text-muted);
+    margin-left: 2px;
+  }
+  .kpi .detail {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  /* Grid */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .card.full { grid-column: 1 / -1; }
+  .card h2 {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .card .card-desc {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    line-height: 1.4;
+  }
+  canvas { width: 100% !important; }
+
+  .insight-box {
+    background: rgba(99,102,241,0.06);
+    border: 1px solid rgba(99,102,241,0.15);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 14px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #94a3c4;
+  }
+  .insight-box strong { color: #b4bfda; }
+
+  /* Heatmap (custom canvas) */
+  .heatmap-container { position: relative; }
+  .heatmap-canvas { width: 100%; height: auto; display: block; }
+
+  /* Source table */
+  .source-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .source-table th {
+    text-align: left;
+    font-weight: 500;
+    color: var(--text-muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--card-border);
+  }
+  .source-table th:not(:first-child) { text-align: right; }
+  .source-table td {
+    padding: 7px 10px;
+    border-bottom: 1px solid rgba(30,34,45,0.5);
+    color: var(--text);
+  }
+  .source-table td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+  .source-table tr:last-child td { border-bottom: none; }
+  .source-table .name-cell { display: flex; align-items: center; gap: 8px; }
+  .type-dot {
+    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  }
+  .type-dot.article { background: var(--blue); }
+  .type-dot.youtube { background: var(--red); }
+  .type-dot.podcast { background: var(--purple); }
+  .consistency-bar {
+    display: inline-block;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--accent);
+    opacity: 0.7;
+  }
+  .consistency-track {
+    display: inline-block;
+    width: 48px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(99,102,241,0.12);
+    position: relative;
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    margin-top: 32px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  @media (max-width: 700px) {
+    body { padding: 20px 16px; }
+    .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+    .grid { grid-template-columns: 1fr; }
+    .card.full { grid-column: 1; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>MLS Source Publishing Rhythms</h1>
+    <div class="meta">60 active sources &middot; 342 articles &middot; Feb 17 &ndash; 25, 2026 &middot; All times Central</div>
+  </div>
+
+  <div class="kpi-strip">
+    <div class="kpi">
+      <div class="label">Weekday Volume</div>
+      <div class="value">32<span class="unit">/ day</span></div>
+      <div class="detail">Peaks Monday post-match</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Weekend Volume</div>
+      <div class="value">43<span class="unit">/ day</span></div>
+      <div class="detail">+33% vs weekday avg</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Avg Content Age</div>
+      <div class="value">15.5<span class="unit">hrs</span></div>
+      <div class="detail">At 7 AM digest time</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Fresh Content</div>
+      <div class="value">13<span class="unit">%</span></div>
+      <div class="detail">Under 8 hrs old at send</div>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <!-- 1. Publishing Curve -->
+    <div class="card full">
+      <h2>When Sources Publish</h2>
+      <div class="card-desc">Average articles per hour, normalized by number of days. The dashed line marks the 7 AM pipeline cutoff.</div>
+      <div style="height:260px"><canvas id="hourlyChart"></canvas></div>
+      <div class="insight-box">
+        <strong>Weekday peak is noon&ndash;2 PM</strong> (3+ articles/hr) &mdash; this content sits ~18 hrs before reaching readers.
+        <strong>Weekend peak shifts to 9&ndash;10 PM</strong> (4/hr) from post-match recaps, making the overnight window the busiest for weekend content.
+      </div>
+    </div>
+
+    <!-- 2. Freshness at Digest Time -->
+    <div class="card">
+      <h2>Content Freshness at Send</h2>
+      <div class="card-desc">How old is each article when readers receive the 7 AM digest?</div>
+      <div style="height:220px"><canvas id="freshnessChart"></canvas></div>
+    </div>
+
+    <!-- 3. Optimal Run Time -->
+    <div class="card">
+      <h2>Pipeline Timing Trade-off</h2>
+      <div class="card-desc">What if we ran the pipeline at a different hour?</div>
+      <div style="height:220px"><canvas id="runTimeChart"></canvas></div>
+    </div>
+
+    <!-- 4. Heatmap -->
+    <div class="card full">
+      <h2>Publishing Heatmap</h2>
+      <div class="card-desc">Average articles per hour, by day of week. Hover for values.</div>
+      <div class="heatmap-container">
+        <canvas id="heatmapCanvas" class="heatmap-canvas"></canvas>
+        <div id="heatmapTooltip" style="display:none;position:absolute;background:#1e222d;border:1px solid #2a3040;border-radius:6px;padding:6px 10px;font-size:11px;color:#c8cdd8;pointer-events:none;z-index:10;white-space:nowrap;"></div>
+      </div>
+    </div>
+
+    <!-- 5. Daily Volume -->
+    <div class="card">
+      <h2>Daily Volume by Type</h2>
+      <div class="card-desc">Stacked by content type. Orange border = weekend.</div>
+      <div style="height:220px"><canvas id="dailyChart"></canvas></div>
+    </div>
+
+    <!-- 6. Content Mix shift -->
+    <div class="card">
+      <h2>Weekend Content Shift</h2>
+      <div class="card-desc">How the content mix changes on weekends vs weekdays.</div>
+      <div style="height:220px"><canvas id="mixChart"></canvas></div>
+    </div>
+
+    <!-- 7. Top Sources Table -->
+    <div class="card full">
+      <h2>Top Sources</h2>
+      <div class="card-desc">Ranked by volume over the period. Consistency = days active out of 8.</div>
+      <table class="source-table">
+        <thead>
+          <tr>
+            <th>Source</th>
+            <th>Articles</th>
+            <th>Avg Publish</th>
+            <th>Consistency</th>
+          </tr>
+        </thead>
+        <tbody id="sourceTableBody"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    Data sourced from live RSS feeds &middot; pubDate normalized from RFC 2822 to U.S. Central
+  </div>
+</div>
+
+<script>
+const D = {"stats": {"total_articles": 342, "total_feeds": 60, "date_range": "2026-02-17 to 2026-02-26", "weekday_avg": 32.1, "weekend_avg": 42.5, "avg_freshness_hrs": 15.5, "pct_fresh_under_8h": 13, "peak_hour_wd": 12, "peak_hour_we": 21, "wd_dates": 8, "we_dates": 2}, "wd_avg": [0.75, 0.0, 0.12, 0.12, 0.0, 0.62, 0.88, 1.0, 2.0, 1.5, 1.75, 2.12, 3.25, 3.12, 3.12, 1.75, 1.5, 1.62, 0.75, 1.5, 0.62, 1.25, 1.12, 1.62], "we_avg": [2.0, 0.5, 0.0, 0.0, 0.0, 1.0, 1.0, 1.5, 2.5, 3.0, 2.5, 3.0, 2.0, 2.5, 2.0, 1.0, 2.5, 1.5, 1.0, 1.0, 2.0, 4.0, 4.0, 2.0], "cumulative": [2.9, 3.2, 3.5, 3.8, 3.8, 5.8, 8.5, 11.7, 17.8, 23.1, 28.7, 35.4, 44.2, 52.9, 61.4, 66.1, 71.1, 75.7, 78.1, 82.2, 84.8, 90.1, 95.0, 100.0], "freshness_pct": [0.0, 2.6, 2.0, 0.0, 0.3, 0.3, 0.3, 2.9, 5.0, 5.0, 5.3, 2.6, 4.1, 2.3, 4.7, 5.0, 4.7, 8.5, 8.8, 8.8, 6.7, 5.6, 5.3, 6.1, 3.2], "run_times": [{"avg_age": 10.5, "fresh_pct": 33.9}, {"avg_age": 10.8, "fresh_pct": 31.9}, {"avg_age": 11.7, "fresh_pct": 27.5}, {"avg_age": 12.7, "fresh_pct": 25.4}, {"avg_age": 13.6, "fresh_pct": 21.6}, {"avg_age": 14.6, "fresh_pct": 19.0}, {"avg_age": 15.1, "fresh_pct": 15.8}, {"avg_age": 15.5, "fresh_pct": 13.5}, {"avg_age": 15.7, "fresh_pct": 11.7}, {"avg_age": 15.2, "fresh_pct": 14.9}, {"avg_age": 15.0, "fresh_pct": 19.9}, {"avg_age": 14.6, "fresh_pct": 25.1}, {"avg_age": 14.0, "fresh_pct": 31.6}, {"avg_age": 12.9, "fresh_pct": 40.4}, {"avg_age": 11.8, "fresh_pct": 47.1}, {"avg_age": 10.8, "fresh_pct": 52.9}, {"avg_age": 10.6, "fresh_pct": 54.4}, {"avg_age": 10.4, "fresh_pct": 53.2}, {"avg_age": 10.3, "fresh_pct": 52.6}, {"avg_age": 10.8, "fresh_pct": 49.4}, {"avg_age": 10.8, "fresh_pct": 46.8}, {"avg_age": 11.1, "fresh_pct": 40.6}, {"avg_age": 10.9, "fresh_pct": 37.1}, {"avg_age": 10.7, "fresh_pct": 33.6}], "daily_data": [{"date": "2026-02-17", "label": "02-17 Tue", "day_name": "Tuesday", "is_weekend": false, "article": 2, "youtube": 3, "podcast": 1, "total": 6}, {"date": "2026-02-18", "label": "02-18 Wed", "day_name": "Wednesday", "is_weekend": false, "article": 5, "youtube": 7, "podcast": 7, "total": 19}, {"date": "2026-02-19", "label": "02-19 Thu", "day_name": "Thursday", "is_weekend": false, "article": 5, "youtube": 14, "podcast": 2, "total": 21}, {"date": "2026-02-20", "label": "02-20 Fri", "day_name": "Friday", "is_weekend": false, "article": 26, "youtube": 10, "podcast": 8, "total": 44}, {"date": "2026-02-21", "label": "02-21 Sat", "day_name": "Saturday", "is_weekend": true, "article": 26, "youtube": 12, "podcast": 2, "total": 40}, {"date": "2026-02-22", "label": "02-22 Sun", "day_name": "Sunday", "is_weekend": true, "article": 24, "youtube": 14, "podcast": 7, "total": 45}, {"date": "2026-02-23", "label": "02-23 Mon", "day_name": "Monday", "is_weekend": false, "article": 34, "youtube": 37, "podcast": 8, "total": 79}, {"date": "2026-02-24", "label": "02-24 Tue", "day_name": "Tuesday", "is_weekend": false, "article": 7, "youtube": 21, "podcast": 5, "total": 33}, {"date": "2026-02-25", "label": "02-25 Wed", "day_name": "Wednesday", "is_weekend": false, "article": 30, "youtube": 12, "podcast": 12, "total": 54}, {"date": "2026-02-26", "label": "02-26 Thu", "day_name": "Thursday", "is_weekend": false, "article": 0, "youtube": 1, "podcast": 0, "total": 1}], "heatmap": [{"d": 0, "h": 0, "v": 1.0}, {"d": 0, "h": 1, "v": 0.0}, {"d": 0, "h": 2, "v": 0.0}, {"d": 0, "h": 3, "v": 0.0}, {"d": 0, "h": 4, "v": 0.0}, {"d": 0, "h": 5, "v": 2.0}, {"d": 0, "h": 6, "v": 4.0}, {"d": 0, "h": 7, "v": 0.0}, {"d": 0, "h": 8, "v": 3.0}, {"d": 0, "h": 9, "v": 3.0}, {"d": 0, "h": 10, "v": 5.0}, {"d": 0, "h": 11, "v": 5.0}, {"d": 0, "h": 12, "v": 11.0}, {"d": 0, "h": 13, "v": 9.0}, {"d": 0, "h": 14, "v": 14.0}, {"d": 0, "h": 15, "v": 3.0}, {"d": 0, "h": 16, "v": 5.0}, {"d": 0, "h": 17, "v": 4.0}, {"d": 0, "h": 18, "v": 1.0}, {"d": 0, "h": 19, "v": 2.0}, {"d": 0, "h": 20, "v": 0.0}, {"d": 0, "h": 21, "v": 2.0}, {"d": 0, "h": 22, "v": 3.0}, {"d": 0, "h": 23, "v": 2.0}, {"d": 1, "h": 0, "v": 0.5}, {"d": 1, "h": 1, "v": 0.0}, {"d": 1, "h": 2, "v": 0.0}, {"d": 1, "h": 3, "v": 0.0}, {"d": 1, "h": 4, "v": 0.0}, {"d": 1, "h": 5, "v": 0.0}, {"d": 1, "h": 6, "v": 0.5}, {"d": 1, "h": 7, "v": 0.5}, {"d": 1, "h": 8, "v": 0.0}, {"d": 1, "h": 9, "v": 1.5}, {"d": 1, "h": 10, "v": 0.0}, {"d": 1, "h": 11, "v": 1.5}, {"d": 1, "h": 12, "v": 1.0}, {"d": 1, "h": 13, "v": 1.5}, {"d": 1, "h": 14, "v": 2.0}, {"d": 1, "h": 15, "v": 0.0}, {"d": 1, "h": 16, "v": 1.0}, {"d": 1, "h": 17, "v": 1.0}, {"d": 1, "h": 18, "v": 1.0}, {"d": 1, "h": 19, "v": 1.0}, {"d": 1, "h": 20, "v": 1.0}, {"d": 1, "h": 21, "v": 2.0}, {"d": 1, "h": 22, "v": 0.0}, {"d": 1, "h": 23, "v": 3.5}, {"d": 2, "h": 0, "v": 1.0}, {"d": 2, "h": 1, "v": 0.0}, {"d": 2, "h": 2, "v": 0.0}, {"d": 2, "h": 3, "v": 0.5}, {"d": 2, "h": 4, "v": 0.0}, {"d": 2, "h": 5, "v": 0.5}, {"d": 2, "h": 6, "v": 0.5}, {"d": 2, "h": 7, "v": 0.5}, {"d": 2, "h": 8, "v": 2.5}, {"d": 2, "h": 9, "v": 2.5}, {"d": 2, "h": 10, "v": 2.5}, {"d": 2, "h": 11, "v": 3.5}, {"d": 2, "h": 12, "v": 4.0}, {"d": 2, "h": 13, "v": 4.0}, {"d": 2, "h": 14, "v": 2.5}, {"d": 2, "h": 15, "v": 3.0}, {"d": 2, "h": 16, "v": 0.5}, {"d": 2, "h": 17, "v": 2.5}, {"d": 2, "h": 18, "v": 0.5}, {"d": 2, "h": 19, "v": 1.5}, {"d": 2, "h": 20, "v": 0.5}, {"d": 2, "h": 21, "v": 1.5}, {"d": 2, "h": 22, "v": 2.0}, {"d": 2, "h": 23, "v": 0.0}, {"d": 3, "h": 0, "v": 0.0}, {"d": 3, "h": 1, "v": 0.0}, {"d": 3, "h": 2, "v": 0.0}, {"d": 3, "h": 3, "v": 0.0}, {"d": 3, "h": 4, "v": 0.0}, {"d": 3, "h": 5, "v": 0.0}, {"d": 3, "h": 6, "v": 0.0}, {"d": 3, "h": 7, "v": 1.5}, {"d": 3, "h": 8, "v": 0.5}, {"d": 3, "h": 9, "v": 0.0}, {"d": 3, "h": 10, "v": 0.5}, {"d": 3, "h": 11, "v": 0.0}, {"d": 3, "h": 12, "v": 0.0}, {"d": 3, "h": 13, "v": 0.0}, {"d": 3, "h": 14, "v": 0.5}, {"d": 3, "h": 15, "v": 1.0}, {"d": 3, "h": 16, "v": 1.0}, {"d": 3, "h": 17, "v": 0.0}, {"d": 3, "h": 18, "v": 0.0}, {"d": 3, "h": 19, "v": 1.5}, {"d": 3, "h": 20, "v": 1.0}, {"d": 3, "h": 21, "v": 0.5}, {"d": 3, "h": 22, "v": 1.0}, {"d": 3, "h": 23, "v": 2.0}, {"d": 4, "h": 0, "v": 2.0}, {"d": 4, "h": 1, "v": 0.0}, {"d": 4, "h": 2, "v": 1.0}, {"d": 4, "h": 3, "v": 0.0}, {"d": 4, "h": 4, "v": 0.0}, {"d": 4, "h": 5, "v": 2.0}, {"d": 4, "h": 6, "v": 1.0}, {"d": 4, "h": 7, "v": 3.0}, {"d": 4, "h": 8, "v": 7.0}, {"d": 4, "h": 9, "v": 1.0}, {"d": 4, "h": 10, "v": 3.0}, {"d": 4, "h": 11, "v": 2.0}, {"d": 4, "h": 12, "v": 5.0}, {"d": 4, "h": 13, "v": 5.0}, {"d": 4, "h": 14, "v": 1.0}, {"d": 4, "h": 15, "v": 3.0}, {"d": 4, "h": 16, "v": 2.0}, {"d": 4, "h": 17, "v": 2.0}, {"d": 4, "h": 18, "v": 2.0}, {"d": 4, "h": 19, "v": 2.0}, {"d": 4, "h": 20, "v": 0.0}, {"d": 4, "h": 21, "v": 0.0}, {"d": 4, "h": 22, "v": 0.0}, {"d": 4, "h": 23, "v": 0.0}, {"d": 5, "h": 0, "v": 1.0}, {"d": 5, "h": 1, "v": 0.0}, {"d": 5, "h": 2, "v": 0.0}, {"d": 5, "h": 3, "v": 0.0}, {"d": 5, "h": 4, "v": 0.0}, {"d": 5, "h": 5, "v": 1.0}, {"d": 5, "h": 6, "v": 1.0}, {"d": 5, "h": 7, "v": 3.0}, {"d": 5, "h": 8, "v": 3.0}, {"d": 5, "h": 9, "v": 5.0}, {"d": 5, "h": 10, "v": 1.0}, {"d": 5, "h": 11, "v": 4.0}, {"d": 5, "h": 12, "v": 1.0}, {"d": 5, "h": 13, "v": 2.0}, {"d": 5, "h": 14, "v": 2.0}, {"d": 5, "h": 15, "v": 1.0}, {"d": 5, "h": 16, "v": 2.0}, {"d": 5, "h": 17, "v": 1.0}, {"d": 5, "h": 18, "v": 0.0}, {"d": 5, "h": 19, "v": 0.0}, {"d": 5, "h": 20, "v": 2.0}, {"d": 5, "h": 21, "v": 5.0}, {"d": 5, "h": 22, "v": 3.0}, {"d": 5, "h": 23, "v": 2.0}, {"d": 6, "h": 0, "v": 3.0}, {"d": 6, "h": 1, "v": 1.0}, {"d": 6, "h": 2, "v": 0.0}, {"d": 6, "h": 3, "v": 0.0}, {"d": 6, "h": 4, "v": 0.0}, {"d": 6, "h": 5, "v": 1.0}, {"d": 6, "h": 6, "v": 1.0}, {"d": 6, "h": 7, "v": 0.0}, {"d": 6, "h": 8, "v": 2.0}, {"d": 6, "h": 9, "v": 1.0}, {"d": 6, "h": 10, "v": 4.0}, {"d": 6, "h": 11, "v": 2.0}, {"d": 6, "h": 12, "v": 3.0}, {"d": 6, "h": 13, "v": 3.0}, {"d": 6, "h": 14, "v": 2.0}, {"d": 6, "h": 15, "v": 1.0}, {"d": 6, "h": 16, "v": 3.0}, {"d": 6, "h": 17, "v": 2.0}, {"d": 6, "h": 18, "v": 2.0}, {"d": 6, "h": 19, "v": 2.0}, {"d": 6, "h": 20, "v": 2.0}, {"d": 6, "h": 21, "v": 3.0}, {"d": 6, "h": 22, "v": 5.0}, {"d": 6, "h": 23, "v": 2.0}], "day_names": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], "top_sources": [{"name": "Soccer Down Here (ATL)", "total": 17, "type": "podcast", "active_days": 5, "total_days": 8, "avg_hour": 13.0}, {"name": "San Diego Futbol (SD)", "total": 16, "type": "youtube", "active_days": 7, "total_days": 8, "avg_hour": 10.4}, {"name": "MLS Official", "total": 15, "type": "youtube", "active_days": 3, "total_days": 8, "avg_hour": 12.5}, {"name": "Soccerwise", "total": 15, "type": "youtube", "active_days": 4, "total_days": 8, "avg_hour": 16.1}, {"name": "Total Soccer Show", "total": 15, "type": "youtube", "active_days": 8, "total_days": 8, "avg_hour": 10.8}, {"name": "The Designated Players", "total": 15, "type": "youtube", "active_days": 5, "total_days": 8, "avg_hour": 14.1}, {"name": "Home and Away (SKC)", "total": 15, "type": "youtube", "active_days": 2, "total_days": 8, "avg_hour": 14.5}, {"name": "NY Post - Christian Arnold", "total": 15, "type": "article", "active_days": 4, "total_days": 8, "avg_hour": 18.7}, {"name": "The Cooligans", "total": 12, "type": "youtube", "active_days": 5, "total_days": 8, "avg_hour": 14.4}, {"name": "Bayou City Soccer (HOU)", "total": 12, "type": "article", "active_days": 5, "total_days": 8, "avg_hour": 12.8}, {"name": "3rd Degree (DAL)", "total": 10, "type": "article", "active_days": 5, "total_days": 8, "avg_hour": 12.0}, {"name": "The Ball is Round (MTL)", "total": 10, "type": "youtube", "active_days": 5, "total_days": 8, "avg_hour": 9.5}, {"name": "Burgundy Wave (COL)", "total": 9, "type": "article", "active_days": 5, "total_days": 8, "avg_hour": 12.9}, {"name": "Philadelphia Soccer Now (PHI)", "total": 9, "type": "article", "active_days": 3, "total_days": 8, "avg_hour": 15.1}, {"name": "KC Soccer Journal (SKC)", "total": 9, "type": "article", "active_days": 5, "total_days": 8, "avg_hour": 13.4}], "content_mix": {"article": {"weekday_avg": 13.6, "weekend_avg": 25.0}, "youtube": {"weekday_avg": 13.1, "weekend_avg": 13.0}, "podcast": {"weekday_avg": 5.4, "weekend_avg": 4.5}}};
+
+/* ── Chart.js defaults ── */
+Chart.defaults.color = '#6b7280';
+Chart.defaults.borderColor = '#1e222d';
+Chart.defaults.font.family = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.plugins.legend.labels.usePointStyle = true;
+Chart.defaults.plugins.legend.labels.padding = 14;
+Chart.defaults.plugins.legend.labels.boxWidth = 8;
+Chart.defaults.animation = { duration: 600, easing: 'easeOutQuart' };
+
+const hourLabel = i => { const h = i % 12 || 12; return h + (i >= 12 ? 'pm' : 'am'); };
+const hourLabels = Array.from({length: 24}, (_, i) => hourLabel(i));
+
+/* ── 1. Publishing Curve ── */
+new Chart(document.getElementById('hourlyChart'), {
+  type: 'line',
+  data: {
+    labels: hourLabels,
+    datasets: [
+      {
+        label: 'Weekday',
+        data: D.wd_avg,
+        borderColor: '#6366f1',
+        backgroundColor: 'rgba(99,102,241,0.08)',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        pointHoverBackgroundColor: '#6366f1',
+        borderWidth: 2,
+      },
+      {
+        label: 'Weekend',
+        data: D.we_avg,
+        borderColor: '#f59e0b',
+        backgroundColor: 'rgba(245,158,11,0.06)',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        pointHoverBackgroundColor: '#f59e0b',
+        borderWidth: 2,
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { position: 'top', align: 'end' },
+      tooltip: {
+        backgroundColor: '#1e222d',
+        borderColor: '#2a3040',
+        borderWidth: 1,
+        titleColor: '#eef0f4',
+        bodyColor: '#c8cdd8',
+        padding: 10,
+        cornerRadius: 6,
+        callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)} avg/day` }
+      },
+      annotation: {
+        annotations: {
+          cutoff: {
+            type: 'line', xMin: 7, xMax: 7,
+            borderColor: 'rgba(239,68,68,0.5)',
+            borderWidth: 1.5, borderDash: [5, 3],
+            label: {
+              display: true, content: '7 AM pipeline',
+              position: 'end', color: 'rgba(239,68,68,0.7)',
+              font: { size: 10, weight: 400 }, backgroundColor: 'transparent',
+            }
+          }
+        }
+      }
+    },
+    scales: {
+      y: { beginAtZero: true, grid: { color: 'rgba(30,34,45,0.6)' },
+        ticks: { stepSize: 1 }, title: { display: true, text: 'articles / day', color: '#454b58', font: { size: 10 } } },
+      x: { grid: { display: false } }
+    }
+  }
+});
+
+/* ── 2. Freshness Distribution ── */
+(() => {
+  const labels = D.freshness_pct.map((_, i) => i + 'h');
+  const colors = D.freshness_pct.map((_, i) => i <= 8 ? 'rgba(34,197,94,0.65)' : i <= 16 ? 'rgba(245,158,11,0.55)' : 'rgba(239,68,68,0.5)');
+  new Chart(document.getElementById('freshnessChart'), {
+    type: 'bar',
+    data: { labels, datasets: [{ data: D.freshness_pct, backgroundColor: colors, borderRadius: 2, barPercentage: 1, categoryPercentage: 0.9 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1e222d', borderColor: '#2a3040', borderWidth: 1,
+          titleColor: '#eef0f4', bodyColor: '#c8cdd8', padding: 10, cornerRadius: 6,
+          callbacks: { label: ctx => `${ctx.parsed.y.toFixed(1)}% of articles` }
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, grid: { color: 'rgba(30,34,45,0.6)' },
+          title: { display: true, text: '% of articles', color: '#454b58', font: { size: 10 } },
+          ticks: { callback: v => v + '%' } },
+        x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
+          title: { display: true, text: 'age when digest sends', color: '#454b58', font: { size: 10 } } }
+      }
+    }
+  });
+})();
+
+/* ── 3. Optimal Run Time ── */
+(() => {
+  new Chart(document.getElementById('runTimeChart'), {
+    type: 'line',
+    data: {
+      labels: hourLabels,
+      datasets: [
+        {
+          label: 'Avg age (hrs)',
+          data: D.run_times.map(r => r.avg_age),
+          borderColor: '#6366f1',
+          backgroundColor: 'transparent',
+          tension: 0.4, pointRadius: 0, pointHoverRadius: 5,
+          pointHoverBackgroundColor: '#6366f1', borderWidth: 2,
+          yAxisID: 'y',
+        },
+        {
+          label: '% under 8h old',
+          data: D.run_times.map(r => r.fresh_pct),
+          borderColor: '#22c55e',
+          backgroundColor: 'transparent',
+          tension: 0.4, pointRadius: 0, pointHoverRadius: 5,
+          pointHoverBackgroundColor: '#22c55e', borderWidth: 2,
+          borderDash: [4, 3],
+          yAxisID: 'y1',
+        },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', align: 'end' },
+        tooltip: {
+          backgroundColor: '#1e222d', borderColor: '#2a3040', borderWidth: 1,
+          titleColor: '#eef0f4', bodyColor: '#c8cdd8', padding: 10, cornerRadius: 6,
+          callbacks: {
+            title: items => `Run at ${items[0].label}`,
+            afterBody: items => {
+              const h = items[0].dataIndex;
+              return h === 7 ? '  ← current schedule' : '';
+            }
+          }
+        },
+        annotation: {
+          annotations: {
+            current: {
+              type: 'point', xValue: 7, yValue: D.run_times[7].avg_age,
+              backgroundColor: 'rgba(239,68,68,0.8)', radius: 5,
+              borderColor: '#ef4444', borderWidth: 2,
+            },
+            currentLabel: {
+              type: 'label', xValue: 7, yValue: D.run_times[7].avg_age + 0.8,
+              content: 'current', color: 'rgba(239,68,68,0.7)',
+              font: { size: 9 }, backgroundColor: 'transparent',
+            }
+          }
+        }
+      },
+      scales: {
+        y: { beginAtZero: false, grid: { color: 'rgba(30,34,45,0.6)' },
+          title: { display: true, text: 'avg age (hrs)', color: '#454b58', font: { size: 10 } },
+          reverse: true },
+        y1: { position: 'right', beginAtZero: true, grid: { display: false },
+          title: { display: true, text: '% fresh', color: '#454b58', font: { size: 10 } },
+          ticks: { callback: v => v + '%' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+})();
+
+/* ── 4. Heatmap (custom canvas) ── */
+(() => {
+  const canvas = document.getElementById('heatmapCanvas');
+  const tooltip = document.getElementById('heatmapTooltip');
+  const days = D.day_names;
+  const hours = 24;
+  const cellW = 38, cellH = 30, padL = 40, padT = 22, padR = 12, padB = 24, gap = 2;
+  const W = padL + hours * (cellW + gap) + padR;
+  const H = padT + 7 * (cellH + gap) + padB;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const maxV = Math.max(...D.heatmap.map(c => c.v));
+  const cells = [];
+
+  // Draw
+  ctx.fillStyle = '#0c0e13';
+  ctx.fillRect(0, 0, W, H);
+
+  // Day labels
+  ctx.font = '10px Inter, system-ui, sans-serif';
+  ctx.fillStyle = '#6b7280';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  days.forEach((day, i) => {
+    ctx.fillText(day, padL - 8, padT + i * (cellH + gap) + cellH / 2);
+  });
+
+  // Hour labels
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  for (let h = 0; h < 24; h += 2) {
+    ctx.fillText(hourLabel(h), padL + h * (cellW + gap) + cellW / 2, padT + 7 * (cellH + gap) + 6);
+  }
+
+  // Cells
+  D.heatmap.forEach(c => {
+    const x = padL + c.h * (cellW + gap);
+    const y = padT + c.d * (cellH + gap);
+    const intensity = maxV > 0 ? c.v / maxV : 0;
+
+    let r, g, b;
+    if (intensity < 0.33) {
+      const t = intensity / 0.33;
+      r = 19 + t * (40 - 19);
+      g = 22 + t * (50 - 22);
+      b = 29 + t * (80 - 29);
+    } else if (intensity < 0.66) {
+      const t = (intensity - 0.33) / 0.33;
+      r = 40 + t * (79 - 40);
+      g = 50 + t * (60 - 50);
+      b = 80 + t * (180 - 80);
+    } else {
+      const t = (intensity - 0.66) / 0.34;
+      r = 79 + t * (99 - 79);
+      g = 60 + t * (102 - 60);
+      b = 180 + t * (241 - 180);
+    }
+    ctx.fillStyle = c.v === 0 ? 'rgba(19,22,29,0.8)' : `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
+    ctx.beginPath();
+    ctx.roundRect(x, y, cellW, cellH, 3);
+    ctx.fill();
+
+    if (c.v >= 3) {
+      ctx.fillStyle = 'rgba(238,240,244,0.85)';
+      ctx.font = '10px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(c.v, x + cellW / 2, y + cellH / 2);
+    } else if (c.v > 0) {
+      ctx.fillStyle = 'rgba(200,205,216,0.45)';
+      ctx.font = '10px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(c.v, x + cellW / 2, y + cellH / 2);
+    }
+
+    cells.push({ x, y, w: cellW, h: cellH, day: days[c.d], hour: hourLabel(c.h), v: c.v, isWeekend: c.d >= 5 });
+  });
+
+  // Pipeline cutoff line
+  const cutoffX = padL + 7 * (cellW + gap) + cellW / 2;
+  ctx.strokeStyle = 'rgba(239,68,68,0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath();
+  ctx.moveTo(cutoffX, padT - 4);
+  ctx.lineTo(cutoffX, padT + 7 * (cellH + gap) - gap);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Tooltip
+  canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left);
+    const my = (e.clientY - rect.top);
+    const hit = cells.find(c => mx >= c.x && mx <= c.x + c.w && my >= c.y && my <= c.y + c.h);
+    if (hit) {
+      tooltip.style.display = 'block';
+      tooltip.style.left = (hit.x + hit.w + 8) + 'px';
+      tooltip.style.top = (hit.y - 4) + 'px';
+      tooltip.innerHTML = `<strong>${hit.day} ${hit.hour}</strong><br>${hit.v} avg articles`;
+    } else {
+      tooltip.style.display = 'none';
+    }
+  });
+  canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+})();
+
+/* ── 5. Daily Volume ── */
+(() => {
+  const labels = D.daily_data.map(d => d.label);
+  new Chart(document.getElementById('dailyChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Articles', data: D.daily_data.map(d => d.article), backgroundColor: 'rgba(59,130,246,0.65)', borderRadius: 2 },
+        { label: 'YouTube', data: D.daily_data.map(d => d.youtube), backgroundColor: 'rgba(239,68,68,0.55)', borderRadius: 2 },
+        { label: 'Podcasts', data: D.daily_data.map(d => d.podcast), backgroundColor: 'rgba(168,85,247,0.5)', borderRadius: 2 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', align: 'end' },
+        tooltip: {
+          backgroundColor: '#1e222d', borderColor: '#2a3040', borderWidth: 1,
+          titleColor: '#eef0f4', bodyColor: '#c8cdd8', padding: 10, cornerRadius: 6,
+        }
+      },
+      scales: {
+        x: { stacked: true, grid: { display: false }, ticks: { maxRotation: 45, font: { size: 10 } } },
+        y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(30,34,45,0.6)' } }
+      }
+    }
+  });
+})();
+
+/* ── 6. Content Mix Comparison ── */
+(() => {
+  const types = ['article', 'youtube', 'podcast'];
+  const typeLabels = ['Articles', 'YouTube', 'Podcasts'];
+  const colors = ['rgba(59,130,246,0.7)', 'rgba(239,68,68,0.6)', 'rgba(168,85,247,0.55)'];
+  new Chart(document.getElementById('mixChart'), {
+    type: 'bar',
+    data: {
+      labels: typeLabels,
+      datasets: [
+        {
+          label: 'Weekday avg/day',
+          data: types.map(t => D.content_mix[t].weekday_avg),
+          backgroundColor: colors.map(c => c),
+          borderRadius: 3,
+          barPercentage: 0.5,
+        },
+        {
+          label: 'Weekend avg/day',
+          data: types.map(t => D.content_mix[t].weekend_avg),
+          backgroundColor: colors.map(c => c.replace(/[\d.]+\)/, '0.35)')),
+          borderColor: colors,
+          borderWidth: 1.5,
+          borderDash: [3, 2],
+          borderRadius: 3,
+          barPercentage: 0.5,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', align: 'end' },
+        tooltip: {
+          backgroundColor: '#1e222d', borderColor: '#2a3040', borderWidth: 1,
+          titleColor: '#eef0f4', bodyColor: '#c8cdd8', padding: 10, cornerRadius: 6,
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y}/day`,
+            afterBody: (items) => {
+              const i = items[0].dataIndex;
+              const t = types[i];
+              const wd = D.content_mix[t].weekday_avg;
+              const we = D.content_mix[t].weekend_avg;
+              const pct = wd > 0 ? Math.round((we - wd) / wd * 100) : 0;
+              return pct !== 0 ? `  Weekend is ${pct > 0 ? '+' : ''}${pct}%` : '';
+            }
+          }
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, grid: { color: 'rgba(30,34,45,0.6)' },
+          title: { display: true, text: 'avg / day', color: '#454b58', font: { size: 10 } } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+})();
+
+/* ── 7. Source Table ── */
+(() => {
+  const tbody = document.getElementById('sourceTableBody');
+  D.top_sources.forEach(s => {
+    const h = Math.round(s.avg_hour);
+    const ampm = hourLabel(h);
+    const pct = Math.round(s.active_days / s.total_days * 100);
+    const barW = Math.round(pct / 100 * 48);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><div class="name-cell"><span class="type-dot ${s.type}"></span>${s.name}</div></td>
+      <td>${s.total}</td>
+      <td>${ampm}</td>
+      <td><span class="consistency-track"><span class="consistency-bar" style="width:${barW}px"></span></span> ${s.active_days}/${s.total_days}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+})();
+</script>
+
+</body>
+</html>
