@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MLS Source Publishing Rhythms</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@2.0.1/dist/chartjs-chart-matrix.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: #0f1117; color: #e0e0e0; padding: 24px; }
+  h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; color: #fff; }
+  .subtitle { font-size: 13px; color: #888; margin-bottom: 28px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 1200px; margin: 0 auto; }
+  .card { background: #1a1d27; border-radius: 12px; padding: 20px; border: 1px solid #2a2d3a; }
+  .card.full { grid-column: 1 / -1; }
+  .card h2 { font-size: 14px; font-weight: 500; color: #999; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
+  .stat-row { display: flex; gap: 24px; margin-bottom: 20px; }
+  .stat { text-align: center; }
+  .stat .num { font-size: 28px; font-weight: 700; color: #fff; }
+  .stat .label { font-size: 11px; color: #666; margin-top: 2px; }
+  canvas { max-height: 280px; }
+  .card.tall canvas { max-height: 340px; }
+  .legend-note { font-size: 11px; color: #666; margin-top: 8px; text-align: center; }
+  .pipeline-note { background: #1e2433; border: 1px solid #2a3a5a; border-radius: 8px; padding: 14px 18px; margin-top: 12px; font-size: 12px; line-height: 1.6; color: #8ba4cc; }
+  .pipeline-note strong { color: #a8c4e8; }
+</style>
+</head>
+<body>
+
+<div style="max-width:1200px;margin:0 auto">
+  <h1>MLS Source Publishing Rhythms</h1>
+  <p class="subtitle">342 articles from 134 feeds &middot; Feb 17–25, 2026 &middot; All times U.S. Central</p>
+</div>
+
+<div class="grid">
+
+  <div class="card full">
+    <h2>Weekday vs Weekend &mdash; Hourly Avg Articles</h2>
+    <canvas id="hourlyChart"></canvas>
+    <div class="pipeline-note">
+      <strong>Pipeline runs at 7 AM CT</strong> with a 24h lookback. The big 11am–2pm weekday peak gets captured in the <em>next morning's</em> digest (~18h delay). Evening content (9pm+) makes it in with ~8h to spare.
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Daily Volume</h2>
+    <canvas id="dailyChart"></canvas>
+    <div class="legend-note">Blue = weekday &middot; Orange = weekend</div>
+  </div>
+
+  <div class="card">
+    <h2>Content Mix by Day</h2>
+    <canvas id="typeChart"></canvas>
+  </div>
+
+  <div class="card full tall">
+    <h2>Heatmap &mdash; Articles per Hour by Day of Week</h2>
+    <canvas id="heatmapChart"></canvas>
+    <div class="legend-note">Darker = more articles published at that hour. Values are per-day averages.</div>
+  </div>
+
+  <div class="card full">
+    <h2>Top 15 Most Active Sources</h2>
+    <canvas id="sourcesChart"></canvas>
+  </div>
+
+</div>
+
+<script>
+const D = {"wd_avg": [0.8, 0.0, 0.1, 0.1, 0.0, 0.6, 0.9, 1.0, 2.0, 1.5, 1.8, 2.1, 3.2, 3.1, 3.1, 1.8, 1.5, 1.6, 0.8, 1.5, 0.6, 1.2, 1.1, 1.6], "we_avg": [2.0, 0.5, 0.0, 0.0, 0.0, 1.0, 1.0, 1.5, 2.5, 3.0, 2.5, 3.0, 2.0, 2.5, 2.0, 1.0, 2.5, 1.5, 1.0, 1.0, 2.0, 4.0, 4.0, 2.0], "daily_labels": ["02-17 (Tue)", "02-18 (Wed)", "02-19 (Thu)", "02-20 (Fri)", "02-21 (Sat)", "02-22 (Sun)", "02-23 (Mon)", "02-24 (Tue)", "02-25 (Wed)", "02-26 (Thu)"], "daily_values": [6, 19, 21, 44, 40, 45, 79, 33, 54, 1], "daily_colors": ["rgba(59,130,246,0.7)", "rgba(59,130,246,0.7)", "rgba(59,130,246,0.7)", "rgba(59,130,246,0.7)", "rgba(249,115,22,0.7)", "rgba(249,115,22,0.7)", "rgba(59,130,246,0.7)", "rgba(59,130,246,0.7)", "rgba(59,130,246,0.7)", "rgba(59,130,246,0.7)"], "type_by_date": {"article": [2, 5, 5, 26, 26, 24, 34, 7, 30, 0], "youtube": [3, 7, 14, 10, 12, 14, 37, 21, 12, 1], "podcast": [1, 7, 2, 8, 2, 7, 8, 5, 12, 0]}, "dates_sorted": ["02-17", "02-18", "02-19", "02-20", "02-21", "02-22", "02-23", "02-24", "02-25", "02-26"], "source_labels": ["Soccer Down Here (ATL)", "San Diego Futbol (SD)", "MLS Official", "Soccerwise", "Total Soccer Show", "The Designated Players", "Home and Away (SKC)", "NY Post - Christian Arnold", "The Cooligans", "Bayou City Soccer (HOU)", "3rd Degree (DAL)", "The Ball is Round (MTL)", "Burgundy Wave (COL)", "Philadelphia Soccer Now (PHI)", "KC Soccer Journal (SKC)"], "source_values": [17, 16, 15, 15, 15, 15, 15, 15, 12, 12, 10, 10, 9, 9, 9], "heatmap_data": [{"x": 0, "y": 0, "v": 1.0}, {"x": 1, "y": 0, "v": 0.0}, {"x": 2, "y": 0, "v": 0.0}, {"x": 3, "y": 0, "v": 0.0}, {"x": 4, "y": 0, "v": 0.0}, {"x": 5, "y": 0, "v": 2.0}, {"x": 6, "y": 0, "v": 4.0}, {"x": 7, "y": 0, "v": 0.0}, {"x": 8, "y": 0, "v": 3.0}, {"x": 9, "y": 0, "v": 3.0}, {"x": 10, "y": 0, "v": 5.0}, {"x": 11, "y": 0, "v": 5.0}, {"x": 12, "y": 0, "v": 11.0}, {"x": 13, "y": 0, "v": 9.0}, {"x": 14, "y": 0, "v": 14.0}, {"x": 15, "y": 0, "v": 3.0}, {"x": 16, "y": 0, "v": 5.0}, {"x": 17, "y": 0, "v": 4.0}, {"x": 18, "y": 0, "v": 1.0}, {"x": 19, "y": 0, "v": 2.0}, {"x": 20, "y": 0, "v": 0.0}, {"x": 21, "y": 0, "v": 2.0}, {"x": 22, "y": 0, "v": 3.0}, {"x": 23, "y": 0, "v": 2.0}, {"x": 0, "y": 1, "v": 0.5}, {"x": 1, "y": 1, "v": 0.0}, {"x": 2, "y": 1, "v": 0.0}, {"x": 3, "y": 1, "v": 0.0}, {"x": 4, "y": 1, "v": 0.0}, {"x": 5, "y": 1, "v": 0.0}, {"x": 6, "y": 1, "v": 0.5}, {"x": 7, "y": 1, "v": 0.5}, {"x": 8, "y": 1, "v": 0.0}, {"x": 9, "y": 1, "v": 1.5}, {"x": 10, "y": 1, "v": 0.0}, {"x": 11, "y": 1, "v": 1.5}, {"x": 12, "y": 1, "v": 1.0}, {"x": 13, "y": 1, "v": 1.5}, {"x": 14, "y": 1, "v": 2.0}, {"x": 15, "y": 1, "v": 0.0}, {"x": 16, "y": 1, "v": 1.0}, {"x": 17, "y": 1, "v": 1.0}, {"x": 18, "y": 1, "v": 1.0}, {"x": 19, "y": 1, "v": 1.0}, {"x": 20, "y": 1, "v": 1.0}, {"x": 21, "y": 1, "v": 2.0}, {"x": 22, "y": 1, "v": 0.0}, {"x": 23, "y": 1, "v": 3.5}, {"x": 0, "y": 2, "v": 1.0}, {"x": 1, "y": 2, "v": 0.0}, {"x": 2, "y": 2, "v": 0.0}, {"x": 3, "y": 2, "v": 0.5}, {"x": 4, "y": 2, "v": 0.0}, {"x": 5, "y": 2, "v": 0.5}, {"x": 6, "y": 2, "v": 0.5}, {"x": 7, "y": 2, "v": 0.5}, {"x": 8, "y": 2, "v": 2.5}, {"x": 9, "y": 2, "v": 2.5}, {"x": 10, "y": 2, "v": 2.5}, {"x": 11, "y": 2, "v": 3.5}, {"x": 12, "y": 2, "v": 4.0}, {"x": 13, "y": 2, "v": 4.0}, {"x": 14, "y": 2, "v": 2.5}, {"x": 15, "y": 2, "v": 3.0}, {"x": 16, "y": 2, "v": 0.5}, {"x": 17, "y": 2, "v": 2.5}, {"x": 18, "y": 2, "v": 0.5}, {"x": 19, "y": 2, "v": 1.5}, {"x": 20, "y": 2, "v": 0.5}, {"x": 21, "y": 2, "v": 1.5}, {"x": 22, "y": 2, "v": 2.0}, {"x": 23, "y": 2, "v": 0.0}, {"x": 0, "y": 3, "v": 0.0}, {"x": 1, "y": 3, "v": 0.0}, {"x": 2, "y": 3, "v": 0.0}, {"x": 3, "y": 3, "v": 0.0}, {"x": 4, "y": 3, "v": 0.0}, {"x": 5, "y": 3, "v": 0.0}, {"x": 6, "y": 3, "v": 0.0}, {"x": 7, "y": 3, "v": 1.5}, {"x": 8, "y": 3, "v": 0.5}, {"x": 9, "y": 3, "v": 0.0}, {"x": 10, "y": 3, "v": 0.5}, {"x": 11, "y": 3, "v": 0.0}, {"x": 12, "y": 3, "v": 0.0}, {"x": 13, "y": 3, "v": 0.0}, {"x": 14, "y": 3, "v": 0.5}, {"x": 15, "y": 3, "v": 1.0}, {"x": 16, "y": 3, "v": 1.0}, {"x": 17, "y": 3, "v": 0.0}, {"x": 18, "y": 3, "v": 0.0}, {"x": 19, "y": 3, "v": 1.5}, {"x": 20, "y": 3, "v": 1.0}, {"x": 21, "y": 3, "v": 0.5}, {"x": 22, "y": 3, "v": 1.0}, {"x": 23, "y": 3, "v": 2.0}, {"x": 0, "y": 4, "v": 2.0}, {"x": 1, "y": 4, "v": 0.0}, {"x": 2, "y": 4, "v": 1.0}, {"x": 3, "y": 4, "v": 0.0}, {"x": 4, "y": 4, "v": 0.0}, {"x": 5, "y": 4, "v": 2.0}, {"x": 6, "y": 4, "v": 1.0}, {"x": 7, "y": 4, "v": 3.0}, {"x": 8, "y": 4, "v": 7.0}, {"x": 9, "y": 4, "v": 1.0}, {"x": 10, "y": 4, "v": 3.0}, {"x": 11, "y": 4, "v": 2.0}, {"x": 12, "y": 4, "v": 5.0}, {"x": 13, "y": 4, "v": 5.0}, {"x": 14, "y": 4, "v": 1.0}, {"x": 15, "y": 4, "v": 3.0}, {"x": 16, "y": 4, "v": 2.0}, {"x": 17, "y": 4, "v": 2.0}, {"x": 18, "y": 4, "v": 2.0}, {"x": 19, "y": 4, "v": 2.0}, {"x": 20, "y": 4, "v": 0.0}, {"x": 21, "y": 4, "v": 0.0}, {"x": 22, "y": 4, "v": 0.0}, {"x": 23, "y": 4, "v": 0.0}, {"x": 0, "y": 5, "v": 1.0}, {"x": 1, "y": 5, "v": 0.0}, {"x": 2, "y": 5, "v": 0.0}, {"x": 3, "y": 5, "v": 0.0}, {"x": 4, "y": 5, "v": 0.0}, {"x": 5, "y": 5, "v": 1.0}, {"x": 6, "y": 5, "v": 1.0}, {"x": 7, "y": 5, "v": 3.0}, {"x": 8, "y": 5, "v": 3.0}, {"x": 9, "y": 5, "v": 5.0}, {"x": 10, "y": 5, "v": 1.0}, {"x": 11, "y": 5, "v": 4.0}, {"x": 12, "y": 5, "v": 1.0}, {"x": 13, "y": 5, "v": 2.0}, {"x": 14, "y": 5, "v": 2.0}, {"x": 15, "y": 5, "v": 1.0}, {"x": 16, "y": 5, "v": 2.0}, {"x": 17, "y": 5, "v": 1.0}, {"x": 18, "y": 5, "v": 0.0}, {"x": 19, "y": 5, "v": 0.0}, {"x": 20, "y": 5, "v": 2.0}, {"x": 21, "y": 5, "v": 5.0}, {"x": 22, "y": 5, "v": 3.0}, {"x": 23, "y": 5, "v": 2.0}, {"x": 0, "y": 6, "v": 3.0}, {"x": 1, "y": 6, "v": 1.0}, {"x": 2, "y": 6, "v": 0.0}, {"x": 3, "y": 6, "v": 0.0}, {"x": 4, "y": 6, "v": 0.0}, {"x": 5, "y": 6, "v": 1.0}, {"x": 6, "y": 6, "v": 1.0}, {"x": 7, "y": 6, "v": 0.0}, {"x": 8, "y": 6, "v": 2.0}, {"x": 9, "y": 6, "v": 1.0}, {"x": 10, "y": 6, "v": 4.0}, {"x": 11, "y": 6, "v": 2.0}, {"x": 12, "y": 6, "v": 3.0}, {"x": 13, "y": 6, "v": 3.0}, {"x": 14, "y": 6, "v": 2.0}, {"x": 15, "y": 6, "v": 1.0}, {"x": 16, "y": 6, "v": 3.0}, {"x": 17, "y": 6, "v": 2.0}, {"x": 18, "y": 6, "v": 2.0}, {"x": 19, "y": 6, "v": 2.0}, {"x": 20, "y": 6, "v": 2.0}, {"x": 21, "y": 6, "v": 3.0}, {"x": 22, "y": 6, "v": 5.0}, {"x": 23, "y": 6, "v": 2.0}], "day_names": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], "num_wd": 8, "num_we": 2, "total": 342};
+
+Chart.defaults.color = '#888';
+Chart.defaults.borderColor = '#2a2d3a';
+Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif";
+Chart.defaults.font.size = 11;
+
+const hourLabels = Array.from({length:24}, (_,i) => {
+  const h = i % 12 || 12;
+  return h + (i >= 12 ? 'pm' : 'am');
+});
+
+// 1. Hourly weekday vs weekend
+new Chart(document.getElementById('hourlyChart'), {
+  type: 'line',
+  data: {
+    labels: hourLabels,
+    datasets: [
+      {
+        label: `Weekday avg (${D.num_wd} days)`,
+        data: D.wd_avg,
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59,130,246,0.1)',
+        fill: true,
+        tension: 0.35,
+        pointRadius: 3,
+        pointHoverRadius: 6,
+        borderWidth: 2.5,
+      },
+      {
+        label: `Weekend avg (${D.num_we} days)`,
+        data: D.we_avg,
+        borderColor: '#f97316',
+        backgroundColor: 'rgba(249,115,22,0.1)',
+        fill: true,
+        tension: 0.35,
+        pointRadius: 3,
+        pointHoverRadius: 6,
+        borderWidth: 2.5,
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { position: 'top', labels: { usePointStyle: true, padding: 16 } },
+      tooltip: {
+        callbacks: {
+          label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y} articles/day`
+        }
+      },
+      annotation: {
+        annotations: {
+          pipeline: {
+            type: 'line',
+            xMin: 7, xMax: 7,
+            borderColor: 'rgba(239,68,68,0.6)',
+            borderWidth: 2,
+            borderDash: [6, 3],
+            label: {
+              display: true,
+              content: '7AM Pipeline',
+              position: 'start',
+              color: '#ef4444',
+              font: { size: 10 },
+            }
+          }
+        }
+      }
+    },
+    scales: {
+      y: { beginAtZero: true, title: { display: true, text: 'Avg articles / day' }, grid: { color: '#222' } },
+      x: { grid: { color: '#1a1a1a' } }
+    }
+  }
+});
+
+// 2. Daily volume bar chart
+new Chart(document.getElementById('dailyChart'), {
+  type: 'bar',
+  data: {
+    labels: D.daily_labels,
+    datasets: [{
+      data: D.daily_values,
+      backgroundColor: D.daily_colors,
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false },
+      tooltip: { callbacks: { label: ctx => `${ctx.parsed.y} articles` } }
+    },
+    scales: {
+      y: { beginAtZero: true, grid: { color: '#222' } },
+      x: { grid: { display: false }, ticks: { maxRotation: 45 } }
+    }
+  }
+});
+
+// 3. Content type stacked bar
+new Chart(document.getElementById('typeChart'), {
+  type: 'bar',
+  data: {
+    labels: D.dates_sorted,
+    datasets: [
+      { label: 'Articles', data: D.type_by_date.article, backgroundColor: '#3b82f6', borderRadius: 2 },
+      { label: 'YouTube', data: D.type_by_date.youtube, backgroundColor: '#ef4444', borderRadius: 2 },
+      { label: 'Podcasts', data: D.type_by_date.podcast, backgroundColor: '#a855f7', borderRadius: 2 },
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'top', labels: { usePointStyle: true, padding: 12 } } },
+    scales: {
+      x: { stacked: true, grid: { display: false }, ticks: { maxRotation: 45 } },
+      y: { stacked: true, beginAtZero: true, grid: { color: '#222' } }
+    }
+  }
+});
+
+// 4. Heatmap
+const heatCtx = document.getElementById('heatmapChart');
+new Chart(heatCtx, {
+  type: 'matrix',
+  data: {
+    datasets: [{
+      label: 'Articles',
+      data: D.heatmap_data.map(d => ({x: d.x, y: d.y, v: d.v})),
+      backgroundColor(ctx) {
+        const v = ctx.dataset.data[ctx.dataIndex]?.v || 0;
+        if (v === 0) return 'rgba(59,130,246,0.05)';
+        const alpha = Math.min(0.15 + v * 0.06, 0.95);
+        return `rgba(59,130,246,${alpha})`;
+      },
+      width: ({chart}) => (chart.chartArea?.width || 600) / 25,
+      height: ({chart}) => (chart.chartArea?.height || 200) / 8,
+      borderRadius: 3,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          title: () => '',
+          label(ctx) {
+            const d = ctx.dataset.data[ctx.dataIndex];
+            const day = D.day_names[d.y];
+            const h = d.x % 12 || 12;
+            const ampm = h + (d.x >= 12 ? 'pm' : 'am');
+            return `${day} ${ampm}: ${d.v} avg articles`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        type: 'linear',
+        position: 'top',
+        min: -0.5, max: 23.5,
+        ticks: {
+          stepSize: 1,
+          callback: v => { const h = v % 12 || 12; return h + (v >= 12 ? 'p' : 'a'); }
+        },
+        grid: { display: false }
+      },
+      y: {
+        type: 'linear',
+        min: -0.5, max: 6.5,
+        reverse: false,
+        ticks: {
+          stepSize: 1,
+          callback: v => D.day_names[v] || ''
+        },
+        grid: { display: false }
+      }
+    }
+  }
+});
+
+// 5. Top sources horizontal bar
+new Chart(document.getElementById('sourcesChart'), {
+  type: 'bar',
+  data: {
+    labels: D.source_labels,
+    datasets: [{
+      data: D.source_values,
+      backgroundColor: 'rgba(59,130,246,0.6)',
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { beginAtZero: true, grid: { color: '#222' }, title: { display: true, text: 'Articles (7 days)' } },
+      y: { grid: { display: false } }
+    }
+  }
+});
+</script>
+
+</body>
+</html>
