@@ -16,18 +16,18 @@
     --text-muted: #7c8694;
     --text-dim: #a1aab5;
     --heading: #1a2332;
-    --accent: #5046e5;
-    --accent-light: #ededfd;
-    --blue: #3b7ddd;
-    --teal: #0d9488;
-    --amber: #d97706;
-    --rose: #e04f6b;
-    --violet: #8b5cf6;
+    --accent: #6929c4;
+    --accent-light: #f0e8ff;
+    --blue: #1192e8;
+    --teal: #005d5d;
+    --amber: #fa4d56;
+    --rose: #9f1853;
+    --violet: #6929c4;
     --slate: #cbd5e1;
-    --green: #16a34a;
-    --green-light: #dcfce7;
-    --amber-light: #fef3c7;
-    --rose-light: #ffe4e6;
+    --green: #198038;
+    --green-light: #defbe6;
+    --amber-light: #fff1f1;
+    --rose-light: #fff0f6;
     --radius: 12px;
     --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
   }
@@ -68,9 +68,9 @@
     border-radius: 8px; padding: 12px 16px; margin-top: 14px;
     font-size: 12px; line-height: 1.6;
   }
-  .insight.info { background: var(--accent-light); color: #3730a3; }
-  .insight.success { background: var(--green-light); color: #166534; }
-  .insight.warn { background: var(--amber-light); color: #92400e; }
+  .insight.info { background: var(--accent-light); color: #491d8b; }
+  .insight.success { background: var(--green-light); color: #044317; }
+  .insight.warn { background: var(--amber-light); color: #750e13; }
   .insight strong { font-weight: 600; }
 
   .heatmap-container { position: relative; overflow-x: auto; }
@@ -243,8 +243,8 @@ new Chart(document.getElementById('hourlyChart'), {
   data:{
     labels:hourLabels,
     datasets:[
-      { label:'Weekday', data:D.wd_avg, borderColor:'#5046e5', backgroundColor:'rgba(80,70,229,0.06)', fill:true, tension:.4, pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#5046e5', borderWidth:2.5 },
-      { label:'Weekend', data:D.we_avg, borderColor:'#d97706', backgroundColor:'rgba(217,119,6,0.05)', fill:true, tension:.4, pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#d97706', borderWidth:2.5 }
+      { label:'Weekday', data:D.wd_avg, borderColor:'#1192e8', backgroundColor:'rgba(17,146,232,0.07)', fill:true, tension:.4, pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#1192e8', borderWidth:2.5 },
+      { label:'Weekend', data:D.we_avg, borderColor:'#fa4d56', backgroundColor:'rgba(250,77,86,0.06)', fill:true, tension:.4, pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#fa4d56', borderWidth:2.5 }
     ]
   },
   options:{
@@ -253,7 +253,7 @@ new Chart(document.getElementById('hourlyChart'), {
     plugins:{
       legend:{position:'top',align:'end'},
       tooltip:{...ttStyle, callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)} avg/day`}},
-      annotation:{annotations:{cutoff:{type:'line',xMin:7,xMax:7,borderColor:'rgba(224,79,107,0.5)',borderWidth:1.5,borderDash:[5,3],label:{display:true,content:'7 AM pipeline',position:'end',color:'rgba(224,79,107,0.7)',font:{size:10,weight:400},backgroundColor:'transparent'}}}}
+      annotation:{annotations:{cutoff:{type:'line',xMin:7,xMax:7,borderColor:'rgba(159,24,83,0.5)',borderWidth:1.5,borderDash:[5,3],label:{display:true,content:'7 AM pipeline',position:'end',color:'rgba(159,24,83,0.7)',font:{size:10,weight:400},backgroundColor:'transparent'}}}}
     },
     scales:{
       y:{beginAtZero:true,grid:{color:gridColor},ticks:{stepSize:1},title:{display:true,text:'articles / day',color:'#a1aab5',font:{size:10}}},
@@ -264,7 +264,7 @@ new Chart(document.getElementById('hourlyChart'), {
 
 /* 2. Freshness */
 (()=>{
-  const colors = D.freshness_pct.map((_,i)=> i<=8?'#16a34a':i<=16?'#d97706':'#e04f6b');
+  const colors = D.freshness_pct.map((_,i)=> i<=8?'#198038':i<=16?'#1192e8':'#fa4d56');
   new Chart(document.getElementById('freshnessChart'),{
     type:'bar',
     data:{labels:D.freshness_pct.map((_,i)=>i+'h'),datasets:[{data:D.freshness_pct,backgroundColor:colors.map(c=>c+'99'),borderColor:colors,borderWidth:1,borderRadius:2,barPercentage:1,categoryPercentage:.92}]},
@@ -286,8 +286,8 @@ new Chart(document.getElementById('hourlyChart'), {
     data:{
       labels:hourLabels,
       datasets:[
-        {label:'Avg age (hrs)',data:D.run_times.map(r=>r.avg_age),borderColor:'#5046e5',backgroundColor:'transparent',tension:.4,pointRadius:0,pointHoverRadius:5,pointHoverBackgroundColor:'#5046e5',borderWidth:2.5,yAxisID:'y'},
-        {label:'% under 8h old',data:D.run_times.map(r=>r.fresh_pct),borderColor:'#16a34a',backgroundColor:'transparent',tension:.4,pointRadius:0,pointHoverRadius:5,pointHoverBackgroundColor:'#16a34a',borderWidth:2,borderDash:[4,3],yAxisID:'y1'}
+        {label:'Avg age (hrs)',data:D.run_times.map(r=>r.avg_age),borderColor:'#1192e8',backgroundColor:'transparent',tension:.4,pointRadius:0,pointHoverRadius:5,pointHoverBackgroundColor:'#1192e8',borderWidth:2.5,yAxisID:'y'},
+        {label:'% under 8h old',data:D.run_times.map(r=>r.fresh_pct),borderColor:'#198038',backgroundColor:'transparent',tension:.4,pointRadius:0,pointHoverRadius:5,pointHoverBackgroundColor:'#198038',borderWidth:2,borderDash:[4,3],yAxisID:'y1'}
       ]
     },
     options:{
@@ -297,8 +297,8 @@ new Chart(document.getElementById('hourlyChart'), {
         legend:{position:'top',align:'end'},
         tooltip:{...ttStyle,callbacks:{title:items=>`Run at ${items[0].label}`,afterBody:items=>items[0].dataIndex===7?'  \u2190 current schedule':''}},
         annotation:{annotations:{
-          dot:{type:'point',xValue:7,yValue:D.run_times[7].avg_age,backgroundColor:'#e04f6b',radius:5,borderColor:'#fff',borderWidth:2},
-          lbl:{type:'label',xValue:7.5,yValue:D.run_times[7].avg_age+.6,content:'current',color:'#e04f6b',font:{size:9,weight:600},backgroundColor:'transparent'}
+          dot:{type:'point',xValue:7,yValue:D.run_times[7].avg_age,backgroundColor:'#9f1853',radius:5,borderColor:'#fff',borderWidth:2},
+          lbl:{type:'label',xValue:7.5,yValue:D.run_times[7].avg_age+.6,content:'current',color:'#9f1853',font:{size:9,weight:600},backgroundColor:'transparent'}
         }}
       },
       scales:{
@@ -313,7 +313,7 @@ new Chart(document.getElementById('hourlyChart'), {
 /* 4. Minute distribution + extra caught */
 (()=>{
   const mLabels = D.minute_dist.map((_,i)=>':'+String(i).padStart(2,'0'));
-  const mColors = D.minute_dist.map((_,i)=> i===0?'#5046e5': i<5?'#818cf8': i%15===0?'#a5b4fc':'#cbd5e1');
+  const mColors = D.minute_dist.map((_,i)=> i===0?'#6929c4': i<5?'#a56eff': i%15===0?'#d4bbff':'#dde1e6');
   new Chart(document.getElementById('minuteChart'),{
     type:'bar',
     data:{labels:mLabels,datasets:[{data:D.minute_dist,backgroundColor:mColors.map(c=>c+'cc'),borderColor:mColors,borderWidth:1,borderRadius:1,barPercentage:1,categoryPercentage:1}]},
@@ -335,8 +335,8 @@ new Chart(document.getElementById('hourlyChart'), {
     data:{
       labels:saLabels,
       datasets:[
-        {label:'Extra at :05',data:sa.map(s=>s.extra_caught),backgroundColor:'#16a34a99',borderColor:'#16a34a',borderWidth:1,borderRadius:3},
-        {label:'Rest of hour',data:sa.map(s=>s.total_at_hour-s.extra_caught),backgroundColor:'#e8eaef',borderColor:'#cbd5e1',borderWidth:1,borderRadius:3}
+        {label:'Extra at :05',data:sa.map(s=>s.extra_caught),backgroundColor:'#19803899',borderColor:'#198038',borderWidth:1,borderRadius:3},
+        {label:'Rest of hour',data:sa.map(s=>s.total_at_hour-s.extra_caught),backgroundColor:'#e8eaef',borderColor:'#c6c6c6',borderWidth:1,borderRadius:3}
       ]
     },
     options:{
@@ -345,7 +345,7 @@ new Chart(document.getElementById('hourlyChart'), {
         legend:{position:'top',align:'end'},
         tooltip:{...ttStyle,callbacks:{afterBody:items=>{const i=items[0].dataIndex;const s=sa[i];return `Running at ${saLabels[i].replace(/[ap]m/,':05$&')} catches ${s.extra_caught} extra`}}},
         annotation:{annotations:{
-          cur:{type:'line',xMin:2,xMax:2,borderColor:'rgba(224,79,107,0.4)',borderWidth:1.5,borderDash:[4,3],label:{display:true,content:'current',position:'start',color:'#e04f6b',font:{size:9},backgroundColor:'transparent'}}
+          cur:{type:'line',xMin:2,xMax:2,borderColor:'rgba(159,24,83,0.4)',borderWidth:1.5,borderDash:[4,3],label:{display:true,content:'current',position:'start',color:'#9f1853',font:{size:9},backgroundColor:'transparent'}}
         }}
       },
       scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,beginAtZero:true,grid:{color:gridColor},title:{display:true,text:'articles at this hour',color:'#a1aab5',font:{size:10}}}}
@@ -386,11 +386,11 @@ new Chart(document.getElementById('hourlyChart'), {
     const x=padL+c.h*(cellW+gap), y=padT+c.d*(cellH+gap);
     const t=maxV>0?c.v/maxV:0;
     let bg;
-    if(c.v===0) bg='#f1f3f5';
-    else if(t<.25) bg=`rgba(80,70,229,${.08+t*.2})`;
-    else if(t<.5) bg=`rgba(80,70,229,${.15+t*.35})`;
-    else if(t<.75) bg=`rgba(80,70,229,${.3+t*.3})`;
-    else bg=`rgba(67,56,202,${.5+t*.4})`;
+    if(c.v===0) bg='#f2f4f8';
+    else if(t<.25) bg=`rgba(0,93,93,${.06+t*.18})`;
+    else if(t<.5) bg=`rgba(0,93,93,${.15+t*.3})`;
+    else if(t<.75) bg=`rgba(0,93,93,${.3+t*.35})`;
+    else bg=`rgba(0,93,93,${.55+t*.4})`;
     ctx.fillStyle=bg;ctx.beginPath();ctx.roundRect(x,y,cellW,cellH,4);ctx.fill();
     ctx.fillStyle=t>.45?'#fff':'#334155';
     ctx.font=(t>.45?'600 ':'')+'10px Inter,system-ui,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
@@ -399,7 +399,7 @@ new Chart(document.getElementById('hourlyChart'), {
   });
 
   const cutX=padL+7*(cellW+gap)+cellW/2;
-  ctx.strokeStyle='rgba(224,79,107,0.45)';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
+  ctx.strokeStyle='rgba(159,24,83,0.45)';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
   ctx.beginPath();ctx.moveTo(cutX,padT-4);ctx.lineTo(cutX,padT+7*(cellH+gap)-gap);ctx.stroke();ctx.setLineDash([]);
 
   canvas.addEventListener('mousemove',e=>{
@@ -419,9 +419,9 @@ new Chart(document.getElementById('hourlyChart'), {
     data:{
       labels:D.daily_data.map(d=>d.label),
       datasets:[
-        {label:'Articles',data:D.daily_data.map(d=>d.article),backgroundColor:'#3b7ddd99',borderColor:'#3b7ddd',borderWidth:1,borderRadius:2},
-        {label:'YouTube',data:D.daily_data.map(d=>d.youtube),backgroundColor:'#e04f6b88',borderColor:'#e04f6b',borderWidth:1,borderRadius:2},
-        {label:'Podcasts',data:D.daily_data.map(d=>d.podcast),backgroundColor:'#8b5cf688',borderColor:'#8b5cf6',borderWidth:1,borderRadius:2}
+        {label:'Articles',data:D.daily_data.map(d=>d.article),backgroundColor:'#1192e899',borderColor:'#1192e8',borderWidth:1,borderRadius:2},
+        {label:'YouTube',data:D.daily_data.map(d=>d.youtube),backgroundColor:'#fa4d5688',borderColor:'#fa4d56',borderWidth:1,borderRadius:2},
+        {label:'Podcasts',data:D.daily_data.map(d=>d.podcast),backgroundColor:'#6929c488',borderColor:'#6929c4',borderWidth:1,borderRadius:2}
       ]
     },
     options:{
@@ -435,7 +435,7 @@ new Chart(document.getElementById('hourlyChart'), {
 /* 7. Content mix */
 (()=>{
   const types=['article','youtube','podcast'], labels=['Articles','YouTube','Podcasts'];
-  const colors=['#3b7ddd','#e04f6b','#8b5cf6'];
+  const colors=['#1192e8','#fa4d56','#6929c4'];
   new Chart(document.getElementById('mixChart'),{
     type:'bar',
     data:{
